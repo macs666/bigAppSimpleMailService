@@ -1,0 +1,77 @@
+#!/usr/bin/env node
+/* eslint-disable no-use-before-define */
+/* eslint-disable no-console */
+
+/**
+ * Module dependencies.
+ */
+
+const mongoose = require("mongoose");
+const app = require("../app");
+const mailController = require("../controllers/mailRequestController");
+
+require("dotenv").config();
+
+/**
+ * Get port from environment and store in Express.
+ */
+
+const port = normalizePort(process.env.PORT || "3000");
+app.set("port", port);
+
+/**
+ * Listen on provided port, on all network interfaces.
+ */
+
+let server;
+mongoose
+  .connect(process.env.MONGODB_URL || "mongodb://127.0.0.1:27017/db", {
+    useCreateIndex: true,
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+  })
+  .then(() => {
+    console.log("Connected to MongoDB");
+    server = app.listen(process.env.PORT, () => {
+      console.log(`Listening to port ${process.env.PORT}`);
+      mailController.runMailCronJob.start();
+    });
+  });
+
+const exitHandler = () => {
+  if (server) {
+    server.close(() => {
+      console.log("Server closed");
+      process.exit(1);
+    });
+  } else {
+    process.exit(1);
+  }
+};
+const unexpectedErrorHandler = (error) => {
+  console.log(error);
+  exitHandler();
+};
+
+process.on("uncaughtException", unexpectedErrorHandler);
+process.on("unhandledRejection", unexpectedErrorHandler);
+
+/**
+ * Normalize a port into a number, string, or false.
+ */
+
+function normalizePort(val) {
+  const portNo = parseInt(val, 10);
+
+  if (Number.isNaN(portNo)) {
+    // named pipe
+    return val;
+  }
+
+  if (portNo >= 0) {
+    // port number
+    return portNo;
+  }
+
+  return false;
+}
